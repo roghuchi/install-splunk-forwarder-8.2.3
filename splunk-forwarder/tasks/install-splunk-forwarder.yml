@@ -1,0 +1,129 @@
+---
+- name: Check if splunk is installed
+  command: service splunk status
+  ignore_errors: True
+  register: splunk_check
+
+- name: create bash file
+  file:
+    path: "/opt/script1.txt"
+    state: touch
+    mode: 0755
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Add lines to bash the file
+  lineinfile:
+    dest: /opt/script1.txt
+    line: "{{ item }}"
+  with_items:
+    - "#!/usr/bin"
+    - "#!/usr/bin/expect"
+    - "set timeout 20"
+    - "set pass \"{{ ftp-pass }}\""
+    - "spawn scp ftpuser@{{ ftp-ip }}:splunkforwarder-8.2.3-cd0848707637-Linux-x86_64.tgz /opt/"
+    - "expect \"ftpuser@{{ ftp-ip }}'s password:\""
+    - "send \"$pass\n\""
+    - "interact"
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+  
+- name: Run script1.txt file
+  command: expect /opt/script1.txt
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Remove script1.txt file
+  command: rm -rf /opt/script1.txt
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: unzip splunk forwarder file
+  command: tar -xvf /opt/splunkforwarder-8.2.3-cd0848707637-Linux-x86_64.tgz -C  /opt/
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: create bash file for Start Splunk
+  file:
+    path: "/opt/splunkforwarder/bin/script2.txt"
+    state: touch
+    mode: 0755
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Add lines to bash the file
+  lineinfile:
+    dest: /opt/splunkforwarder/bin/script2.txt
+    line: "{{ item }}"
+  with_items:
+    - "#!/usr/bin"
+    - "#!/usr/bin/expect"
+    - "set timeout 20"
+    - "set user \"{{ splunk-user }}\""
+    - "set pass \"{{ splunk-pass }}\""
+    - "spawn ./splunk start --accept-license"
+    - "expect \"Please enter an administrator username:\""
+    - "send \"$user\n\""
+    - "send \"$pass\n\""
+    - "send \"$pass\n\""
+    - "interact"
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Run script2.txt file
+  command: expect script2.txt
+  args:
+    chdir: /opt/splunkforwarder/bin/
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Remove script2.txt file
+  command: rm -rf /opt/splunkforwarder/bin/script2.txt
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: boot start splunk
+  command: ./splunk enable boot-start
+  args:
+    chdir: /opt/splunkforwarder/bin/
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: create bash file for deploy-poll Splunk
+  file:
+    path: "/opt/splunkforwarder/bin/script3.txt"
+    state: touch
+    mode: 0755
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Add lines to bash the file
+  lineinfile:
+    dest: /opt/splunkforwarder/bin/script3.txt
+    line: "{{ item }}"
+  with_items:
+    - "#!/usr/bin"
+    - "#!/usr/bin/expect"
+    - "set timeout 20"
+    - "set user \"{{ splunk-user }}\""
+    - "set pass \"{{ splunk-pass }}\""
+    - "spawn ./splunk set deploy-poll {{ splunk-server-ip }}:8089"
+    - "expect \"Splunk username\""
+    - "send \"$user\n\""
+    - "send \"$pass\n\""
+    - "interact"
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Run script3.txt file
+  command: expect script3.txt
+  args:
+    chdir: /opt/splunkforwarder/bin/
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: Remove script3.txt file
+  command: rm -rf /opt/splunkforwarder/bin/script3.txt
+  when: splunk_check.stderr.find('could not be found') != -1
+
+- name: boot start splunk
+  command: ./splunk restart
+  args:
+    chdir: /opt/splunkforwarder/bin/
+  ignore_unreachable: yes
+  when: splunk_check.stderr.find('could not be found') != -1
