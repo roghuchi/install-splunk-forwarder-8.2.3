@@ -1,0 +1,5 @@
+--- 
+- name: ping hosts
+  ping: 
+
+- include_tasks: install-splunk-forwarder.yml
