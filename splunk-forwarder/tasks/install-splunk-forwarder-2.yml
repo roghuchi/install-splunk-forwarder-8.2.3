@@ -1,0 +1,55 @@
+---
+- name: install sshpass and python3 in debian
+  command: apt install sshpass python3 -y
+  when: ansible_os_family == "Debian"
+
+- name: install sshpass and python3 and dnf in centos
+  command: yum install sshpass python3 dnf -y
+  when: ansible_os_family == "RedHat"
+
+
+- name: install pexpect in debian
+  command: sudo -E pip3 install pexpect
+  when: ansible_os_family == "Debian"
+
+- name: download splunk forwarder file
+  command: sshpass -p '{{{passwsord}}' scp -o StrictHostKeyChecking=no -- {{ftp-user}}@{{sftp-ip}}:splunkforwarder-8.2.3-cd0848707637-Linux-x86_64.tgz /opt/
+
+- name: Sleep for 10 seconds and continue with play
+  wait_for:
+    timeout: 10
+
+- name: unzip splunk forwarder file
+  command: tar -xvf /opt/splunkforwarder-8.2.3-cd0848707637-Linux-x86_64.tgz -C  /opt/
+
+- name: Start Splunk forwarder service
+  vars:
+    ansible_python_interpreter: '/usr/bin/python3'
+  become: yes
+  become_method: sudo
+  expect:
+    echo: yes
+    chdir: "/opt/splunkforwarder/bin"
+    command: "./splunk start --accept-license"
+    timeout: "20"
+    responses:
+      (.*)Please enter an administrator username(.*): "{{splunk-forwarder-user}}"
+      (.*)Please enter a new password(.*): "{{splunk-forwarder-password}}"
+      (.*)Please confirm new password(.*): "{{splunk-forwarder-password}}"
+
+- name: enable boot-start splunk forwarder
+  command: /opt/splunkforwarder/bin/splunk enable boot-start
+
+- name: set deploy-poll {{splunk-server}}:8089 splunk forwarder
+  vars:
+    ansible_python_interpreter: '/usr/bin/python3'
+  expect:
+    chdir: "/opt/splunkforwarder/bin"
+    command: "./splunk set deploy-poll {{splunk-server}}:8089"
+    timeout: "20"
+    responses:
+      (.*)Splunk username(.*): "{{splunk-forwarder-user}}"
+      (.*)Password:(.*): "{{splunk-forwarder-password}}"
+
+- name: restart splunk forwarder
+  command: /opt/splunkforwarder/bin/splunk restart
