@@ -1,2 +1,2 @@
 # install-splunk-forwarder-8.2.3
-2 way for Splunk forwarder installation 
+2 ways for Splunk forwarder installation 
